@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Food & Symptom Tracker</title>
+<style>
+:root{
+  --bg:#0b0b0d; --card:#0f1720; --muted:#9aa0a6; --text:#e6e7e8; --accent:#0a84ff; --accent2:#ff9f0a; --radius:12px;
+}
+*{box-sizing:border-box}
+body{margin:12px; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial; background:linear-gradient(180deg,#060607, var(--bg)); color:var(--text);}
+h1{margin:0 0 6px 0}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent); padding:12px; border-radius:var(--radius); border:1px solid rgba(255,255,255,0.03); box-shadow: 0 8px 24px rgba(0,0,0,0.6); margin-top:12px}
+label{display:block;font-size:0.95rem;color:var(--muted);margin-top:12px}
+input,textarea,select{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:var(--text);font-size:0.95rem}
+textarea{min-height:88px;resize:vertical}
+button{background:var(--accent);color:white;border:0;padding:10px 12px;border-radius:10px;font-weight:600;cursor:pointer}
+button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text)}
+.small{font-size:0.86rem;color:var(--muted);margin-top:8px}
+.pill{background:rgba(255,255,255,0.03);padding:6px 8px;border-radius:999px;color:var(--muted)}
+.listBtn{position:fixed;right:12px;bottom:18px;width:56px;height:56px;border-radius:999px;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;box-shadow:0 10px 30px rgba(0,0,0,0.6);cursor:pointer}
+.listPanelOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:flex-start;justify-content:flex-end;padding:20px;z-index:60}
+.listPanel{width:380px;max-width:92vw;max-height:84vh;overflow:auto;padding:12px;border-radius:12px;background:linear-gradient(180deg,#0f1720,#0b0f14);border:1px solid rgba(255,255,255,0.03)}
+.entry{padding:10px;border-radius:8px;margin-bottom:10px;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);border:1px solid rgba(255,255,255,0.02)}
+.meta{color:var(--muted);font-size:0.85rem;margin-bottom:6px}
+.kv{font-size:0.95rem;margin-top:4px}
+.controls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.hidden{display:none}
+.modalOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:80}
+.modal{width:92%;max-width:520px;background:var(--card);padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+.row-vertical{display:flex;flex-direction:column}
+.footer{margin-top:14px;color:var(--muted);font-size:0.86rem}
+.importInput{display:none}
+.iconRow{display:flex;gap:8px;justify-content:flex-end}
+.noteTiny{font-size:0.8rem;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Food & Symptom Tracker</h1>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <span class="pill" id="count">Einträge: 0</span>
+    <button id="exportBtn" class="ghost" title="Manuell exportieren">Exportieren</button>
+    <button id="importBtn" class="ghost" title="Importieren">Import</button>
+    <input id="importFile" class="importInput" type="file" accept=".json,application/json">
+  </div>
+</header>
+
+<main>
+  <section class="card" id="formCard">
+    <form id="form" onsubmit="return false" class="row-vertical" autocomplete="off">
+      <label>Was gegessen (optional)
+        <input id="food" type="text" placeholder="z. B. Brot, Käse, Apfel">
+      </label>
+
+      <label>Blähungen (1–5)
+        <select id="bloating">
+          <option value="">–</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        </select>
+      </label>
+
+      <label>Stuhlgang (Bristol 1–7)
+        <select id="stool">
+          <option value="">–</option>
+          <option value="1">1 – sehr fest</option>
+          <option value="2">2 – fest</option>
+          <option value="3">3 – leicht fest</option>
+          <option value="4">4 – normal</option>
+          <option value="5">5 – weich</option>
+          <option value="6">6 – breiig</option>
+          <option value="7">7 – flüssig</option>
+        </select>
+        <div class="noteTiny">Kurz: 1 sehr fest → 7 flüssig</div>
+      </label>
+
+      <label>Schlafdauer (Stunden, Kommazahlen möglich)
+        <input id="sleep_duration" type="number" min="0" max="24" step="0.1" placeholder="z. B. 7.5">
+      </label>
+
+      <label>Schlafqualität (1–5)
+        <select id="sleep_quality">
+          <option value="">–</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        </select>
+      </label>
+
+      <label>Stress
+        <select id="stress">
+          <option value="">–</option>
+          <option>niedrig</option><option>mittel</option><option>hoch</option>
+        </select>
+      </label>
+
+      <label>Bewegung
+        <select id="movement">
+          <option value="">–</option>
+          <option>keine</option><option>leicht</option><option>mittel</option><option>intensiv</option>
+        </select>
+      </label>
+
+      <label>Notizen (optional)
+        <textarea id="notes" placeholder="z. B. Medikamente, Alkohol, wenig Schlaf..."></textarea>
+      </label>
+
+      <div class="controls">
+        <button id="save">Eintrag speichern</button>
+      </div>
+      <div class="noteTiny">Datum & Uhrzeit werden automatisch hinzugefügt.</div>
+    </form>
+  </section>
+
+  <div class="footer small">Die App speichert lokal im Browser. Alle 7 Tage wird beim Speichern automatisch ein Export-Prompt gestartet, damit du die JSON-Datei sichern kannst.</div>
+</main>
+
+<!-- List overlay -->
+<div id="listPanelOverlay" class="listPanelOverlay" role="dialog" aria-hidden="true">
+  <div id="listPanel" class="listPanel" role="document">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>Einträge</strong>
+      <div style="display:flex;gap:8px">
+        <button id="closeList" class="ghost">Schließen</button>
+        <button id="clearAll" class="ghost">Alle löschen</button>
+      </div>
+    </div>
+    <div id="entries"></div>
+  </div>
+</div>
+
+<button id="listBtn" class="listBtn" title="Einträge anzeigen">📋</button>
+
+<!-- Edit modal -->
+<div id="modalOverlay" class="modalOverlay" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <h3>Eintrag bearbeiten</h3>
+    <form id="editForm" onsubmit="return false" class="row-vertical" autocomplete="off">
+      <label>Was gegessen
+        <input id="edit_food" type="text">
+      </label>
+      <label>Blähungen (1–5)
+        <select id="edit_bloating">
+          <option value="">–</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        </select>
+      </label>
+      <label>Stuhlgang (Bristol 1–7)
+        <select id="edit_stool">
+          <option value="">–</option>
+          <option value="1">1 – sehr fest</option>
+          <option value="2">2 – fest</option>
+          <option value="3">3 – leicht fest</option>
+          <option value="4">4 – normal</option>
+          <option value="5">5 – weich</option>
+          <option value="6">6 – breiig</option>
+          <option value="7">7 – flüssig</option>
+        </select>
+      </label>
+      <label>Schlafdauer (Stunden)
+        <input id="edit_sleep_duration" type="number" min="0" max="24" step="0.1">
+      </label>
+      <label>Schlafqualität (1–5)
+        <select id="edit_sleep_quality">
+          <option value="">–</option>
+          <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+        </select>
+      </label>
+      <label>Stress
+        <select id="edit_stress">
+          <option value="">–</option>
+          <option>niedrig</option><option>mittel</option><option>hoch</option>
+        </select>
+      </label>
+      <label>Bewegung
+        <select id="edit_movement">
+          <option value="">–</option>
+          <option>keine</option><option>leicht</option><option>mittel</option><option>intensiv</option>
+        </select>
+      </label>
+      <label>Notizen
+        <textarea id="edit_notes"></textarea>
+      </label>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button id="saveEdit">Speichern</button>
+        <button id="cancelEdit" class="ghost">Abbrechen</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'fts_entries_v4';
+const LAST_EXPORT_KEY = 'fts_last_export_v4';
+const EXPORT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function readLocal(){ try{ const raw = localStorage.getItem(STORAGE_KEY); return raw?JSON.parse(raw):[]; }catch(e){return[];} }
+function saveLocal(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); renderCount(); }
+function renderCount(){ const arr = readLocal(); document.getElementById('count').textContent = 'Einträge: '+arr.length; }
+
+function makeId(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function nowISO(){ return new Date().toISOString(); }
+function nowTs(){ return Date.now(); }
+
+async function maybeAutoExportOnSave(){
+  try{
+    const last = localStorage.getItem(LAST_EXPORT_KEY);
+    const lastTs = last ? parseInt(last,10) : 0;
+    const diff = nowTs() - lastTs;
+    if(lastTs === 0 || diff >= EXPORT_INTERVAL_MS){
+      // trigger export
+      await exportAll(true);
+      localStorage.setItem(LAST_EXPORT_KEY, String(nowTs()));
+    }
+  }catch(e){ console.error('auto export error', e); }
+}
+
+async function saveEntryFromForm(){
+  const entry = {
+    id: makeId(),
+    ts: nowTs(),
+    datetime: nowISO(),
+    food: document.getElementById('food').value.trim() || null,
+    bloating: document.getElementById('bloating').value || null,
+    stool: document.getElementById('stool').value || null,
+    sleep_duration: document.getElementById('sleep_duration').value || null,
+    sleep_quality: document.getElementById('sleep_quality').value || null,
+    stress: document.getElementById('stress').value || null,
+    movement: document.getElementById('movement').value || null,
+    notes: document.getElementById('notes').value.trim() || null
+  };
+  const arr = readLocal();
+  arr.push(entry);
+  saveLocal(arr);
+  await maybeAutoExportOnSave();
+  document.getElementById('form').reset();
+  alert('Gespeichert');
+}
+
+document.getElementById('save').addEventListener('click', saveEntryFromForm);
+
+/* ✅ FIXED EXPORT FUNCTION */
+function exportAll(autoFlag=false){
+  try{
+    const arr = readLocal();
+    const data = JSON.stringify(arr, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+
+    // Must be created and clicked directly inside user event for iOS Safari
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0,10);
+    const filename = autoFlag ? `entries_export_${stamp}.json` : `entries.json`;
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+
+    // On iOS Safari, delay ensures it's processed as part of click event
+    setTimeout(() => {
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    }, 0);
+
+    localStorage.setItem(LAST_EXPORT_KEY, String(nowTs()));
+    if (!autoFlag) alert('Export gestartet. Datei sollte gleich angeboten werden.');
+  }catch(e){
+    console.error('export error', e);
+    alert('Export fehlgeschlagen: ' + e);
+  }
+}
+
+document.getElementById('exportBtn').addEventListener('click', ()=> exportAll(false));
+
+/* --- rest unchanged --- */
+
+// import
+document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (ev)=>{
+  const f = ev.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const parsed = JSON.parse(e.target.result);
+      if(!Array.isArray(parsed)) throw 'Ungültiges Format (erwartet Array)';
+      const arr = readLocal().concat(parsed);
+      saveLocal(arr);
+      alert('Import erfolgreich: ' + parsed.length + ' Einträge hinzugefügt.');
+    }catch(err){ alert('Import-Fehler: ' + err); }
+  };
+  reader.readAsText(f);
+});
+
+// ... (keep all your other code: list panel, edit modal, etc.)
+</script>
+
+</body>
+</html>
